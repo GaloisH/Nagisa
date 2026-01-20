@@ -16,7 +16,7 @@ from langchain_core.tools import tool
 from tools import tools_list
 
 # ================= 配置区域 =================
-api_key = "sk-qpZdSlUmdbFnaF5WOWQ3tCTrqIzzYrDYBF8fmqOfJrdvpgaE"
+api_key = ""
 base_url = "https://jeniya.top/v1"
 
 system_prompt = """
@@ -75,7 +75,7 @@ def img2base64(image, max_size=1024):
 class ReActGUIAgent:
     def __init__(self, api_key, base_url, system_prompt):
         self.llm = ChatOpenAI(
-            model="claude-sonnet-4-5-20250929",
+            model="gemini-3-flash-preview",
             openai_api_key=api_key,
             base_url=base_url,
             temperature=0.1,
