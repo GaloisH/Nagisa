@@ -1,0 +1,12 @@
+{
+    "xuanshen": {
+        "voice": {
+            "voice_id": "qwen-tts-vc-xuanshen-voice-20260507163841857-729f"
+        }
+    },
+    "xuanshen1": {
+        "voice": {
+            "voice_id": "qwen-tts-vc-xuanshen1-voice-20260507163905119-64cb"
+        }
+    }
+}

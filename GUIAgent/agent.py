@@ -170,7 +170,6 @@ class ReActGUIAgent:
             # 如果没有工具调用，说明 LLM 认为任务完成或需要提问
             if not response.tool_calls:
                 print(f"[FINISH] Assistant: {response.content}")
-                # 将最终回复加入历史（可选）
                 messages.append(current_turn_message)
                 messages.append(response)
                 return response.content
