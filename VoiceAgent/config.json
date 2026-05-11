@@ -1,0 +1,27 @@
+{
+    "xuanshen": {
+        "voice": {
+            "voice_id": "qwen-tts-vc-xuanshen-voice-20260507163841857-729f"
+        }
+    },
+    "xuanshen1": {
+        "voice": {
+            "voice_id": "qwen-tts-vc-xuanshen1-voice-20260507163905119-64cb"
+        }
+    },
+    "shu": {
+        "voice": {
+            "voice_id": "qwen-tts-vc-shu-voice-20260507230359651-c1f0"
+        }
+    },
+    "kaltsit": {
+        "voice": {
+            "voice_id": "qwen-tts-vc-kaltsit-voice-20260508001510305-fe26"
+        }
+    },
+    "kaltsit1": {
+        "voice": {
+            "voice_id": "qwen-tts-vc-kaltsit1-voice-20260508001821057-280a"
+        }
+    }
+}

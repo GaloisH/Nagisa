@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-# 加载当前目录下的 .env 环境变量
 load_dotenv()
 
 class Config:
@@ -22,7 +21,6 @@ class Config:
     # ------------------
     # mem0 Config
     # ------------------
-    # 本地记忆库的相对路径
     MEMORY_DB_PATH = os.path.join(os.path.dirname(__file__), "mem0_db")
 
     # mem0 本地存储配置 (使用本地 chroma 或 qdrant)
@@ -34,12 +32,5 @@ class Config:
                 "collection_name": "nagisa_roleplay_memories",
                 "path": MEMORY_DB_PATH,
             }
-        },
-        # 如果你不想使用默认的 OpenAI Embeddings，也可以在这里配置 embedder
-        # "embedder": {
-        #     "provider": "openai",
-        #     "config": {
-        #         "model": "text-embedding-3-small"
-        #     }
-        # }
+        }
     }
