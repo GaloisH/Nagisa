@@ -11,10 +11,10 @@ load_dotenv()
 DEFAULT_TARGET_MODEL = (
     "qwen3-tts-vc-realtime-2026-01-15"  # 声音复刻、语音合成要使用相同的模型
 )
-DEFAULT_PREFERRED_NAME = "xuanshen1"
+DEFAULT_PREFERRED_NAME = "kaltsit1"
 DEFAULT_AUDIO_MIME_TYPE = "audio/mpeg"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VOICE_FILE_PATH = os.path.join(BASE_DIR, "tianhuangVoice.m4a")
+VOICE_FILE_PATH = os.path.join(BASE_DIR, "kaltsit1.MP3")
 
 
 def create_voice(
@@ -26,8 +26,6 @@ def create_voice(
     """
     创建音色，并返回 voice 参数
     """
-    # 新加坡和北京地域的API Key不同。获取API Key：https://help.aliyun.com/zh/model-studio/get-api-key
-    # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key = "sk-xxx"
     api_key = os.getenv("DASHSCOPE_API_KEY")
 
     file_path_obj = pathlib.Path(file_path)

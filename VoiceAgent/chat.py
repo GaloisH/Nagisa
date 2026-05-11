@@ -14,6 +14,7 @@ client = OpenAI(
 
 def streaming_chat(input:str):
     tts=StreamingTTS()
+    tts.start(voice_name="shu")
     response=client.chat.completions.create(
         model="deepseek-v4-pro",
         messages=[
@@ -24,16 +25,15 @@ def streaming_chat(input:str):
         reasoning_effort="high",
         extra_body={"thinking": {"type": "enabled"}}
     )
-    tts.start()
     for chunk in response:
         content=chunk.choices[0].delta.content
         if content:
             tts.feed(content)
-            print(chunk.choices[0].delta.content, end='', flush=True)
+            print(chunk.choices[0].delta.content, end='  ')
 
     tts.finish()
 
 if __name__ == "__main__":
     init_dashscope_api_key()
     # chat("What is the capital of France?")
-    streaming_chat("你好，能不能介绍一下自己？")
+    streaming_chat("请使用中文介绍自己")

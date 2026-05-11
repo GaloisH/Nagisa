@@ -27,7 +27,7 @@ from dotenv import load_dotenv
 load_dotenv()
 BASE_DIR= os.path.dirname(os.path.abspath(__file__))
 DEFAULT_TARGET_MODEL = "qwen3-tts-vc-realtime-2026-01-15" 
-VOICE_NAME="xuanshen"
+VOICE_NAME="shu"
 TEXT_TO_SYNTHESIZE = [
     '对吧~我就特别喜欢这种超市，',
     '尤其是过年的时候',
@@ -105,7 +105,8 @@ class StreamingTTS():
         self.tts.update_session(
             voice=voice_token,
             response_format=AudioFormat.PCM_24000HZ_MONO_16BIT,
-            mode='server_commit'
+            mode='server_commit',
+            speech_rate=1
         )
 
     def feed(self,text_chunk):
