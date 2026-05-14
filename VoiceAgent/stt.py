@@ -88,6 +88,7 @@ class RealtimeSTT:
         self.model = model
         self.transcript_queue = queue.Queue()
         self.callback = RealtimeCallback(self.transcript_queue)
+        self.is_paused = False
         self.conversation = None
         self.pa = None
         self.stream = None
@@ -105,7 +106,7 @@ class RealtimeSTT:
             output_modalities              = [MultiModality.TEXT],
             enable_input_audio_transcription = True,
             transcription_params           = TranscriptionParams(
-                language          = "ja",
+                language          = "zh",
                 sample_rate       = SAMPLE_RATE,
                 input_audio_format= "pcm",
             ),
@@ -130,6 +131,7 @@ class RealtimeSTT:
 
     def pause(self):
         """暂停麦克风采集，清空队列，保持 WebSocket 连接"""
+        self.is_paused = True
         if self.stream and self.stream.is_active():
             self.stream.stop_stream()
         while not audio_queue.empty():
@@ -140,6 +142,7 @@ class RealtimeSTT:
 
     def resume(self):
         """恢复麦克风采集"""
+        self.is_paused = False
         if self.stream and not self.stream.is_active():
             self.stream.start_stream()
 

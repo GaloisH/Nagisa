@@ -115,6 +115,13 @@ class StreamingTTS():
             self.tts.append_text(self.buffer)
             self.buffer=""
 
+    def feed_rest(self):
+        if self.buffer.strip():
+            self.tts.append_text(self.buffer)
+            self.buffer=""
+        self.callback.wait_for_finished()
+        # self.callback.wait_for_finished()
+
     def finish(self):
         if self.buffer.strip():
             self.tts.append_text(self.buffer)
