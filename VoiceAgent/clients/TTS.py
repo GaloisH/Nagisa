@@ -1,46 +1,24 @@
-# coding=utf-8
-# Installation instructions for pyaudio:
-# APPLE Mac OS X
-#   brew install portaudio
-#   pip install pyaudio
-# Debian/Ubuntu
-#   sudo apt-get install python-pyaudio python3-pyaudio
-#   or
-#   pip install pyaudio
-# CentOS
-#   sudo yum install -y portaudio portaudio-devel && pip install pyaudio
-# Microsoft Windows
-#   python -m pip install pyaudio
-
 import pyaudio
 import os
-import requests
 import base64
-import pathlib
 import threading
-import time
 import dashscope
 from dashscope.audio.qwen_tts_realtime import QwenTtsRealtime, QwenTtsRealtimeCallback, AudioFormat
 import json
 from dotenv import load_dotenv
-# ======= 常量配置 =======
-load_dotenv()
-BASE_DIR= os.path.dirname(os.path.abspath(__file__))
+from .client import Client
+
+
+BASE_DIR=os.getcwd()
 DEFAULT_TARGET_MODEL = "qwen3-tts-vc-realtime-2026-01-15" 
 VOICE_NAME="shu"
-TEXT_TO_SYNTHESIZE = [
-    '对吧~我就特别喜欢这种超市，',
-    '尤其是过年的时候',
-    '去逛超市',
-    '就会觉得',
-    '超级超级开心！',
-    '想买好多好多的东西呢！'
-]
 
 def init_dashscope_api_key():
     """
     初始化 dashscope SDK 的 API key
     """
+    env_path=os.path.join(BASE_DIR,"VoiceAgent/.env")
+    load_dotenv(env_path)
     dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
 # ======= 回调类 =======
@@ -84,7 +62,8 @@ class MyCallback(QwenTtsRealtimeCallback):
     def wait_for_finished(self):
         self.complete_event.wait()
 
-class StreamingTTS():
+@Client.register("TTS")
+class TTS(Client):
     def __init__(self,model=DEFAULT_TARGET_MODEL, url='wss://dashscope.aliyuncs.com/api-ws/v1/realtime'):
         init_dashscope_api_key()
         self.callback = MyCallback()
@@ -115,17 +94,16 @@ class StreamingTTS():
             self.tts.append_text(self.buffer)
             self.buffer=""
 
+    def feed_rest(self):
+        if self.buffer.strip():
+            self.tts.append_text(self.buffer)
+            self.buffer=""
+        self.callback.wait_for_finished()
+        # self.callback.wait_for_finished()
+
     def finish(self):
         if self.buffer.strip():
             self.tts.append_text(self.buffer)
             self.buffer=""
         self.tts.finish()
         self.callback.wait_for_finished()
-
-# ======= 主入口 =======
-if __name__ == '__main__':
-    tts = StreamingTTS()
-    tts.start()
-    for text in TEXT_TO_SYNTHESIZE:
-        tts.feed(text)
-        time.sleep(0.5)  # 模拟文本逐渐输入的效果

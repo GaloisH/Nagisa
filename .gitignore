@@ -4,3 +4,6 @@ __pycache__/
 .vscode/
 .DS_Storedata
 .claude
+test/
+plans/
+voices/
