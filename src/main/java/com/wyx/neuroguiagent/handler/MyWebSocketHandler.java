@@ -5,6 +5,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.ser.Serializers;
+import com.wyx.neuroguiagent.agent.ChatAgent;
 import com.wyx.neuroguiagent.agent.GuiAgent;
 import com.wyx.neuroguiagent.common.Action;
 import com.wyx.neuroguiagent.common.BaseRequest;
@@ -48,6 +49,9 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
     public MyWebSocketHandler() {
 //        startBroadcastTask();
     }
+
+    @Resource
+    private ChatAgent chatAgent;
 
     @Resource
     private GuiAgent guiAgent;
@@ -109,11 +113,12 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         }
         // 2. chat 逻辑
         String chatMessage = request.getData();
-        // 版本一: 直接调用 agent，每个步骤都给客户端 sendMessage，同步调用，先跑通流程
+        // 已废弃// 版本一: 直接调用 agent，每个步骤都给客户端 sendMessage，同步调用，先跑通流程
+        // 版本二：用chatAgent模型调用对话，对话中chatAgent可将guiAgent作为工具异步执行后返回
         WebSocketSession finalSession = session;
-        agentExecutor.submit(() -> {
-            String chatAnswer = guiAgent.runTask(chatMessage, finalSession);
-            sendResponse(finalSession, chatAnswer);
+        CompletableFuture.runAsync(()->{
+            String result = chatAgent.runTask(chatMessage, finalSession);
+            sendResponse(finalSession, result);
         });
 
     }
@@ -184,6 +189,32 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         BaseResponse response = BaseResponse.success(message);
         String jsonResponse = JSONUtil.toJsonStr(response);
         return sendMessage(session, jsonResponse);
+    }
+
+    // 发送流式响应
+    public static boolean sendStreamResponse(
+            WebSocketSession session,
+            String chunk,
+            boolean end
+    ) {
+
+        BaseResponse response = new BaseResponse();
+
+        response.setCode(200);
+        response.setMessage("OK");
+        response.setType("stream");
+        response.setContent(chunk);
+
+        // 流式时为空
+        response.setCallId(null);
+        response.setActions(null);
+
+        // 新增结束标识
+        response.setEnd(end);
+
+        String json = JSONUtil.toJsonStr(response);
+
+        return sendMessage(session, json);
     }
 
     /**

@@ -25,10 +25,10 @@ class NeuroGuiAgentApplicationTests {
     @Resource
     private ChatAgent chatAgent;
 
-    @Test
-    void testDeepSeekChatModel(){
-        System.out.println(chatAgent.runTask("你是谁"));
-    }
+//    @Test
+//    void testDeepSeekChatModel(){
+//        System.out.println(chatAgent.runTask("你是谁"));
+//    }
 
 
     @Test

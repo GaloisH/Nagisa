@@ -19,11 +19,13 @@ import java.util.List;
 @AllArgsConstructor
 public class BaseResponse {
 
+    private String type;        // 类型，这里暂时分成默认，即完整消息，和"stream"，流式响应
     private int code;           // 状态码，如 200, 404, 500
     private String message;     // 状态描述，如 "OK", "Internal Error"
     private Object content;     // AI 的回应内容或普通文本内容内容
     private String callId;     //标识请求
     private List<Action> actions; // 指令数组，可以要求客户端执行多个动作
+    private Boolean end;     // 如果是流式响应，该字段标识流是否结束
 
     /**
      * 快捷成功响应：仅文本

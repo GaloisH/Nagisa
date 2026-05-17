@@ -13,8 +13,10 @@ import org.springframework.ai.chat.messages.*;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.ToolContext;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.Media;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Component;
@@ -89,7 +91,7 @@ public class GuiAgent {
             log.info("Step {}, task {}, sessionId {}",stepCount,message,session.getId());
             // 2.1 构建当前轮次 UserMessage ，包括：请求客户端当前截图并保存至本地，截图作为UserMessage一部分
             long screenShotStartTime = System.currentTimeMillis();
-            String jpegPictureBase64 = MyWebSocketHandler.sendRequestAndWait(session, "正在对屏幕进行截图",
+            String jpegPictureBase64 = MyWebSocketHandler.sendRequestAndWait(session, "",
                     Collections.singletonList(new Action("SCREENSHOT", Map.of())));
             log.info("轮次{}, 截图请求耗时 {} ms", stepCount,  System.currentTimeMillis() - screenShotStartTime);
             String savePath = ImageSaveUtil.saveBase64ImageAsJpeg(jpegPictureBase64);
@@ -107,7 +109,8 @@ public class GuiAgent {
             ArrayList<Message> sendMessages = new ArrayList<>(historyMessages);
             sendMessages.add(userMessage);
             long startLLMInvoke = System.currentTimeMillis();
-            ChatResponse response = geminiVisualModel.call(new Prompt(sendMessages));
+            ChatResponse response = geminiVisualModel.call(new Prompt(sendMessages,
+                    OpenAiChatOptions.builder().toolCallbacks(guiTools).build()));
             log.info("轮次{}, LLM call 耗时 {} ms", stepCount,  System.currentTimeMillis() - startLLMInvoke);
             historyMessages.add(new UserMessage("[Image of screen state]"));
 
@@ -123,10 +126,10 @@ public class GuiAgent {
             // 2.4.1 首先将AssistantMessage的内容返回给客户端，如果没有内容则返回默认内容
             log.info("[Response AssistantMessage] sessionId: {} | content: {} | token: {}",
                     session.getId(), assistantMessage.getText(), response.getMetadata().getUsage());
-            String sendMessage = StrUtil.isBlank(assistantMessage.getText()) ? "正在为您处理" : assistantMessage.getText();
-            boolean isSendSuccess = MyWebSocketHandler.sendResponse(session, sendMessage);
+//            String sendMessage = StrUtil.isBlank(assistantMessage.getText()) ? "正在为您处理" : assistantMessage.getText();
+            boolean isSendSuccess = MyWebSocketHandler.sendResponse(session, "");
             if (!isSendSuccess){
-                log.error("Assistant Message 发送失败，sessionId {}, 消息内容{}",session.getId(),sendMessage);
+                log.error("Assistant Message 发送失败，sessionId {}",session.getId());
             }
 
             // 2.4.2 顺序执行工具调用，结果加入List<ToolResponse>，用 List<ToolResponse> 构造ToolResponseMessage
