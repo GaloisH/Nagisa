@@ -1,5 +1,6 @@
 package com.wyx.neuroguiagent.agent;
 
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.wyx.neuroguiagent.handler.MyWebSocketHandler;
@@ -23,6 +24,10 @@ import org.springframework.web.socket.WebSocketSession;
 import reactor.core.publisher.Flux;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 @Component
@@ -49,23 +54,36 @@ public class ChatAgent {
 
 
 
-    public String runTask(String userInput, WebSocketSession session) {
+    public void runTask(String userInput, WebSocketSession session) {
 
         ToolContext toolContext = new ToolContext(Map.of(
                 "session", session,
                 "currentMessages", Collections.singletonList(new UserMessage(userInput))
         ));
-
+        // 1.call AI，然后发送 stream chunk 给客户端, sendStreamResponse 是注册一个回调然后立即返回
         List<Message> historyMessages = new ArrayList<>();
         historyMessages.add(new UserMessage(userInput));
-        ChatResponse response = deepSeekChatModel.call(new Prompt(historyMessages,
+        Flux<ChatResponse> response = deepSeekChatModel.stream(new Prompt(historyMessages,
                 OpenAiChatOptions.builder().toolCallbacks(chatAgentTools).build()));
-        log.info(JSONUtil.toJsonStr(response));
-        AssistantMessage assistantMessage = response.getResult().getOutput();
-        assistantMessage = toCleanAssistantMessage(assistantMessage);
-        if (!assistantMessage.hasToolCalls()){
-            return assistantMessage.getText();
+        Future<AssistantMessage> assistantMessageFuture = MyWebSocketHandler.sendStreamResponse(session, response);
+
+        // 2.等待流式消息传输完毕后拿到完整消息，如果没有工具调用则说明任务完成
+        AssistantMessage assistantMessage = null;
+        try {
+            assistantMessage = assistantMessageFuture.get(120, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.error("stream subscribe 回调执行超时", e);
+            return;
+        } catch (Exception e){
+            log.error("assistantMessageFuture get 失败", e);
+            return;
         }
+        if (!assistantMessage.hasToolCalls()){
+            log.info("任务执行完毕");
+            return;
+        }
+
+        // 3. 如果有工具调用则执行工具调用并执行下一轮AI call
         historyMessages.add(assistantMessage);
         List<AssistantMessage.ToolCall> toolCalls = assistantMessage.getToolCalls();
         List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
@@ -82,17 +100,45 @@ public class ChatAgent {
             toolResponses.add(new ToolResponseMessage.ToolResponse(callId, toolName, toolOutput));
         }
         historyMessages.add(new ToolResponseMessage(toolResponses));
-//        historyMessages.add(new UserMessage("what should we do next"));
-        return deepSeekChatModel.call(
-                    new Prompt(
-                            historyMessages,
-                            OpenAiChatOptions.builder().toolCallbacks(chatAgentTools).build()
-                    )
+        historyMessages.add(new UserMessage("tool Response is above"));
+        Flux<ChatResponse> response2 = deepSeekChatModel.stream(
+                new Prompt(
+                        historyMessages,
+                        OpenAiChatOptions.builder().toolCallbacks(chatAgentTools).build()
                 )
-                .getResult()
-                .getOutput()
-                .getText();
+        );
+
+        // todo 这里假设最多两轮，后续可改循环
+        assistantMessageFuture = MyWebSocketHandler.sendStreamResponse(session, response2);
+        try {
+            assistantMessage = assistantMessageFuture.get(120, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            log.error("stream subscribe 回调执行超时", e);
+            return;
+        } catch (Exception e){
+            log.error("assistantMessageFuture get 失败", e);
+            return;
+        }
+        log.info("任务执行完毕，最终回复：{}",assistantMessage.getText());
     }
+
+
+    private AssistantMessage getEntireMessageFromChunks(List<ChatResponse> chunks) {
+        StringBuilder fullText = new StringBuilder();
+        List<AssistantMessage.ToolCall> toolCallsList = new ArrayList<>();
+        for (ChatResponse chunk : chunks) {
+            AssistantMessage chunkMsg = chunk.getResult().getOutput();
+            if (StrUtil.isNotBlank(chunkMsg.getText())) {
+                fullText.append(chunkMsg.getText());
+            }
+            if (chunkMsg.hasToolCalls()) {
+                toolCallsList.addAll(chunkMsg.getToolCalls());
+            }
+        }
+        return new AssistantMessage(fullText.toString(), Map.of(), toolCallsList);
+    }
+
+
 
     // 把assistantMessage里的context字段去掉
     private AssistantMessage toCleanAssistantMessage(AssistantMessage assistantMessage) {

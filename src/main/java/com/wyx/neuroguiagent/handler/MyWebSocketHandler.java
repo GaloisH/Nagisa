@@ -12,15 +12,19 @@ import com.wyx.neuroguiagent.common.BaseRequest;
 import com.wyx.neuroguiagent.common.BaseResponse;
 import com.wyx.neuroguiagent.service.ChatNeuroService;
 import com.wyx.neuroguiagent.utils.BaseContext;
+import com.wyx.neuroguiagent.utils.ToolCallUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -117,8 +121,7 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         // 版本二：用chatAgent模型调用对话，对话中chatAgent可将guiAgent作为工具异步执行后返回
         WebSocketSession finalSession = session;
         CompletableFuture.runAsync(()->{
-            String result = chatAgent.runTask(chatMessage, finalSession);
-            sendResponse(finalSession, result);
+            chatAgent.runTask(chatMessage, finalSession);
         });
 
     }
@@ -191,29 +194,65 @@ public class MyWebSocketHandler extends TextWebSocketHandler {
         return sendMessage(session, jsonResponse);
     }
 
+    // *** 这里的假设是所用到的模型的工具调用都在一个 chunk 里，如果不在一个chunk可能引发异常，目前所知 deepSeek 和 gemini 都是如此
+    // todo 可以优化逻辑处理一个工具调用在多个chunk
+    public static Future<AssistantMessage> sendStreamResponse(WebSocketSession session, Flux<ChatResponse> chatResponseFlux) {
+        CompletableFuture<AssistantMessage> future = new CompletableFuture<>();
+        StringBuilder fullText = new StringBuilder();
+        List<AssistantMessage.ToolCall> toolCallsList = new ArrayList<>();
+        // todo 这里执行回调的线程池的默认配置是多少个线程
+        chatResponseFlux.subscribe(
+                chunk -> {
+                    if (chunk == null || chunk.getResult().getOutput() == null) {
+                        return;
+                    }
+                    AssistantMessage chunkMsg = chunk.getResult().getOutput();
+                    // 1.处理文本：推给前端，加入fullText
+                    String deltaText = chunkMsg.getText();
+                    if(!StrUtil.isBlank(deltaText)) {
+                        sendChunkResponse(session, deltaText, false);
+                        fullText.append(deltaText);
+                    }
+                    // 2.处理工具调用：不推给前端，加入toolCallsList
+                    if (chunkMsg.hasToolCalls()) {
+                        toolCallsList.addAll(chunkMsg.getToolCalls());
+                    }
+                },
+                error -> {
+                    log.error("AI stream subscribe 回调执行异常", error);
+                },
+                () -> {
+                    // 1.发送流结束消息给客户端
+                    sendChunkResponse(session, "", true);
+                    // 2.完成future
+                    AssistantMessage assistantMessage = new AssistantMessage(fullText.toString(), Map.of(), toolCallsList);
+                    future.complete(assistantMessage);
+                }
+        );
+        return future;
+    }
+
+
+
     // 发送流式响应
-    public static boolean sendStreamResponse(
+    private static boolean sendChunkResponse(
             WebSocketSession session,
             String chunk,
             boolean end
     ) {
 
         BaseResponse response = new BaseResponse();
-
         response.setCode(200);
         response.setMessage("OK");
         response.setType("stream");
         response.setContent(chunk);
-
         // 流式时为空
         response.setCallId(null);
         response.setActions(null);
-
         // 新增结束标识
         response.setEnd(end);
 
         String json = JSONUtil.toJsonStr(response);
-
         return sendMessage(session, json);
     }
 

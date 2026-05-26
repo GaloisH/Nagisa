@@ -80,10 +80,10 @@ public class ChatModelConfig {
             // 2. 使用 Hutool 解析成 JSON 对象
             JSONObject json = JSONUtil.parseObj(requestBody);
             // 3. 注入 thinking 参数 (相当于在 JSON 根部加了 "thinking": {"type": "disabled"})
-            // DeepSeek 官方文档要求：如果要关闭思考模式，就这样设置
-            JSONObject thinkingNode = new JSONObject();
-            thinkingNode.set("type", "disabled");
-            json.set("thinking", thinkingNode);
+//            // DeepSeek 官方文档要求：如果要关闭思考模式，就这样设置
+//            JSONObject thinkingNode = new JSONObject();
+//            thinkingNode.set("type", "disabled");
+//            json.set("thinking", thinkingNode);
             // 4. 转回字节数组并继续执行请求
             byte[] modifiedBody = json.toString().getBytes(StandardCharsets.UTF_8);
             return execution.execute(request, modifiedBody);
