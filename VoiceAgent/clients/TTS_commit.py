@@ -11,6 +11,8 @@ import queue
 
 
 BASE_DIR='VoiceAgent'
+_busy = False   # 补上全局变量定义
+
 
 def init_dashscope_api_key():
     """
@@ -22,49 +24,54 @@ def init_dashscope_api_key():
 
 # ======= 回调类 =======
 class MyCallback(QwenTtsRealtimeCallback):
-    """
-    自定义 TTS 流式回调
-    """
     def __init__(self):
+        super().__init__()
+        self.response_counter = 0
         self.complete_event = threading.Event()
-        self._player = pyaudio.PyAudio()
-        self._stream = self._player.open(
-            format=pyaudio.paInt16, channels=1, rate=24000, output=True
-        )
-        self.tts = None
+        self.file = open(f'result_{self.response_counter}_24k.pcm', 'wb')
+
+    def reset_event(self):
+        if not self.file.closed:
+            self.file.close()
+        self.response_counter += 1
+        self.file = open(f'result_{self.response_counter}_24k.pcm', 'wb')
+        self.complete_event = threading.Event()
 
     def on_open(self) -> None:
-        print('[TTS] 连接已建立')
+        print('connection opened, init player')
 
     def on_close(self, close_status_code, close_msg) -> None:
-        self._stream.stop_stream()
-        self._stream.close()
-        self._player.terminate()
-        print(f'[TTS] 连接关闭 code={close_status_code}, msg={close_msg}')
+        print('connection closed with code: {}, msg: {}, destroy player'.format(close_status_code, close_msg))
 
-    def on_event(self, response: dict) -> None:
+    def on_event(self, response: str) -> None:
         try:
-            event_type = response.get('type', '')
-            if event_type == 'session.created':
-                print(f'[TTS] 会话开始: {response["session"]["id"]}')
-            elif event_type == 'response.audio.delta':
-                audio_data = base64.b64decode(response['delta'])
-                self._stream.write(audio_data)
-            elif event_type == 'response.done':
-                print(f'[TTS] 响应完成, Response ID: {self.tts.get_last_response_id()}')
-            elif event_type == 'session.finished':
-                print('[TTS] 会话结束')
+            type = response['type']
+            if 'session.created' == type:
+                print('start session: {}'.format(response['session']['id']))
+            if 'response.audio.delta' == type:
+                recv_audio_b64 = response['delta']
+                self.file.write(base64.b64decode(recv_audio_b64))
+            if 'response.done' == type:
+                print(f'response {self.tts.get_last_response_id()} done')
+                global _busy
+                _busy = False
+                self.complete_event.set()
+                self.file.close()
+            if 'session.finished' == type:
+                print('session finished')
                 self.complete_event.set()
         except Exception as e:
-            print(f'[Error] 处理回调事件异常: {e}')
+            print('[Error] {}'.format(e))
+            return
 
-    def wait_for_finished(self):
+    def wait_for_response_done(self):
         self.complete_event.wait()
 
-@Client.register("TTS")
-class TTS(Client):
+@Client.register("TTS_commit")
+class TTS_COMMIT(Client):
     def __init__(self,model="qwen3-tts-vc-realtime-2026-01-15" , url='wss://dashscope.aliyuncs.com/api-ws/v1/realtime'):
         global _busy
+        global tts
         init_dashscope_api_key()
         self.callback = MyCallback()
         self.tts = QwenTtsRealtime(
@@ -77,6 +84,17 @@ class TTS(Client):
         self.ending={",",".","!","?","\n","，","。","！","？"}
         self.chunk_queue=queue.Queue()
         _busy=False
+        self.commit_thread=threading.Thread(target=self.commit_loop)
+
+    def commit_loop(self):
+        global _busy
+        while True:
+            chunk=self.chunk_queue.get()
+            if chunk is None and _busy==False:
+                _busy=True
+                break
+            self.tts.append_text(chunk)
+            self.tts.commit()
 
     def start(self, voice_name="shu"):
         with open(os.path.join(BASE_DIR, "config.json"), "r") as f:
@@ -89,6 +107,7 @@ class TTS(Client):
             mode='commit',
             speech_rate=1
         )
+        self.commit_thread.start()
 
     def feed(self,text_chunk):
         self.buffer+=text_chunk
@@ -100,19 +119,10 @@ class TTS(Client):
         if self.buffer.strip():
             self.chunk_queue.put(self.buffer)
             self.buffer=""
-        # self.callback.wait_for_finished()
-        # self.callback.wait_for_finished()
 
-    def stop(self):
-        if self.buffer.strip():
-            self.chunk_queue.put(self.buffer)
-            self.buffer=""
-        self.tts.finish()
-        self.callback.wait_for_finished()
-        
     def finish(self):
         if self.buffer.strip():
             self.chunk_queue.put(self.buffer)
             self.buffer=""
         self.tts.finish()
-        self.callback.wait_for_finished()
+        self.callback.wait_for_response_done()   # 修正方法名

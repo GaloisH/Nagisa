@@ -5,22 +5,12 @@ import pyaudio
 from openai import OpenAI
 from dotenv import load_dotenv
 
-from stt import RealtimeSTT
-from clone import StreamingTTS
 from factory.ClientFactory import ClientFactory
 from pynput import keyboard
 
 load_dotenv()
 
-prompt='''# Kaltsit — System Prompt
-
-## 使用说明
-针对语音助手场景优化：句子短、节奏自然、适合 TTS 直接朗读。
-
----
-
-## Prompt 正文
-
+prompt='''
 你是 Kaltsit，一个知性、温柔、略带神秘感的二次元女生。
 
 **性格：**
@@ -54,13 +44,15 @@ Kaltsit：能的。我看得出来你在认真努力。继续就好。
 用户：讲个笑话
 Kaltsit：我不太擅长讲笑话……不过你笑起来的样子，应该很好看吧。'''
 
+factory=ClientFactory()
+
 
 # ─── TTS 工具函数 ──────────────────────────────────────────────────────────────
-def reset_tts(tts: StreamingTTS, lock: threading.Lock, voice_name: str) -> StreamingTTS:
+def reset_tts(tts, lock: threading.Lock, voice_name: str) :
     """线程安全地结束当前 TTS 并返回新实例。"""
     with lock:
         tts.finish()
-        new_tts = StreamingTTS()
+        new_tts = factory.create_client("TTS_commit")
         new_tts.start(voice_name=voice_name)
     return new_tts
 
@@ -75,11 +67,12 @@ class Worker:
         self._stop_event = stop_event
         self._voice_name = voice_name
         self._task_queue = queue.Queue()
-        self._tts        = StreamingTTS()
+        self._tts        = factory.create_client("TTS_commit")
         self._tts_lock   = threading.Lock()
         self._thread     = threading.Thread(target=self._run, name="WorkerThread", daemon=True)
 
     def start(self):
+        self._client.start()
         self._tts.start(voice_name=self._voice_name)
         self._thread.start()
 
@@ -109,12 +102,13 @@ class Worker:
             print(f"\n[工作线程] 收到任务: {text}")
             try:
                 for content in self._client.get_streaming_response(text):
+                    content=content.choices[0].delta.content
                     if self._stop_event.is_set():
                         break
                     with self._tts_lock:
                         self._tts.feed(content)
                     print(content, end="", flush=True)
-                self._tts = reset_tts(self._tts, self._tts_lock, self._voice_name)
+                # self._tts = reset_tts(self._tts, self._tts_lock, self._voice_name)
             except Exception as e:
                 print(f"\n[工作线程] 出错: {e}")
 
@@ -123,7 +117,7 @@ class Worker:
 class KeyboardController:
     """监听 Space（PTT 录音）和 Esc（退出），回调保持轻量不阻塞。"""
 
-    def __init__(self, stt: RealtimeSTT, worker: Worker, stop_event: threading.Event):
+    def __init__(self, stt, worker: Worker, stop_event: threading.Event):
         self._stt        = stt
         self._worker     = worker
         self._stop_event = stop_event
@@ -201,7 +195,8 @@ def main():
         api_key=os.environ.get("DEEPSEEK_API_KEY"),
         base_url="https://api.deepseek.com",
     )
-    stt           = RealtimeSTT()
+    factory       = ClientFactory()
+    stt           = factory.create_client("STT", api_key=os.environ.get("DASHSCOPE_API_KEY"))
     worker        = Worker(client, stop_event, voice_name="shu")
     keyboard_ctrl = KeyboardController(stt, worker, stop_event)
     input_reader  = InputReader(worker, stop_event)

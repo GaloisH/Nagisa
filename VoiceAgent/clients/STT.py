@@ -7,7 +7,7 @@ import dashscope
 from dashscope.audio.qwen_omni import *
 from dashscope.audio.qwen_omni.omni_realtime import TranscriptionParams  
 from dotenv import load_dotenv
-from .client import Client
+from clients.client import Client
 
 BASE_DIR=os.getcwd()
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -82,7 +82,7 @@ def send_loop(conversation):
 
 # ─── STT 类封装 ──────────────────────────────────────────────────
 @Client.register("STT")
-class STT:
+class STT(Client):
     def __init__(self, api_key=None, model="qwen3-asr-flash-realtime"):
         dashscope.api_key = api_key or os.environ.get("DASHSCOPE_API_KEY", "YOUR_KEY")
         self.model = model

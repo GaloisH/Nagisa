@@ -7,6 +7,10 @@ class Client(ABC):
     def start(self):
         pass
 
+    @abstractmethod
+    def stop(self):
+        pass
+
     @classmethod
     def register(cls, name: str):
         def decorator(factory_class):
