@@ -25,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 public class ChatModelConfig {
 
+    @Resource
+    private AiApiProperties aiApiProperties;
 
     public RestClient.Builder getRestClientBuilder() {
         // 配置一个http拦截器更好地看到input schema
@@ -53,12 +55,12 @@ public class ChatModelConfig {
     public ChatModel geminiVisualModel(){
 
         OpenAiApi api = OpenAiApi.builder()
-                .apiKey("sk-P6buRuIVYws3TS0XbCoh9U2ygvKD8dgHHVX0DYnFyHSMudtV")
-                .baseUrl("https://jeniya.top/")
+                .apiKey(aiApiProperties.getGemini().getApiKey())
+                .baseUrl(aiApiProperties.getGemini().getBaseUrl())
                 .restClientBuilder(getRestClientBuilder()) // 关键点：注入带日志拦截的底层客户端
                 .build();
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-                .model("gemini-3-flash-preview")
+                .model(aiApiProperties.getGemini().getModel())
                 .temperature(0.1)
                 .internalToolExecutionEnabled(false)
                 .build();
@@ -93,12 +95,12 @@ public class ChatModelConfig {
 
         // toolcallback工厂模式
         OpenAiApi api = OpenAiApi.builder()
-                .apiKey("sk-101be397b9b54d118e1dce4258adc3a5")
-                .baseUrl("https://api.deepseek.com")
+                .apiKey(aiApiProperties.getDeepseek().getApiKey())
+                .baseUrl(aiApiProperties.getDeepseek().getBaseUrl())
                 .restClientBuilder(RestClient.builder().requestInterceptor(loggingInterceptor)) // 关键点：注入带日志拦截的底层客户端
                 .build();
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-                .model("deepseek-v4-flash")
+                .model(aiApiProperties.getDeepseek().getModel())
                 .temperature(0.1)
                 .internalToolExecutionEnabled(false)
                 .build();
@@ -115,12 +117,12 @@ public class ChatModelConfig {
 
         // toolcallback工厂模式
         OpenAiApi api = OpenAiApi.builder()
-                .apiKey("sk-P6buRuIVYws3TS0XbCoh9U2ygvKD8dgHHVX0DYnFyHSMudtV")
-                .baseUrl("https://jeniya.top/")
+                .apiKey(aiApiProperties.getGemini().getApiKey())
+                .baseUrl(aiApiProperties.getGemini().getBaseUrl())
                 .restClientBuilder(getRestClientBuilder()) // 关键点：注入带日志拦截的底层客户端
                 .build();
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-                .model("gemini-3-flash-preview")
+                .model(aiApiProperties.getGemini().getModel())
                 .temperature(0.1)
                 .internalToolExecutionEnabled(false)
                 .build();
@@ -138,12 +140,12 @@ public class ChatModelConfig {
 
         // toolcallback工厂模式
         OpenAiApi api = OpenAiApi.builder()
-                .apiKey("sk-P6buRuIVYws3TS0XbCoh9U2ygvKD8dgHHVX0DYnFyHSMudtV")
-                .baseUrl("https://jeniya.top/")
+                .apiKey(aiApiProperties.getGemini().getApiKey())
+                .baseUrl(aiApiProperties.getGemini().getBaseUrl())
                 .restClientBuilder(getRestClientBuilder()) // 关键点：注入带日志拦截的底层客户端
                 .build();
         OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
-                .model("gemini-3-flash-preview")
+                .model(aiApiProperties.getGemini().getModel())
                 .temperature(0.1)
                 .internalToolExecutionEnabled(false)
                 .build();

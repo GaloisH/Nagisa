@@ -1,2 +1,8 @@
-
-
+# Local development configuration — DO NOT COMMIT
+# Real API keys for local development
+app:
+  ai:
+    deepseek:
+      api-key: 'sk-101be397b9b54d118e1dce4258adc3a5'
+    gemini:
+      api-key: 'sk-i8XDLVRUGe0GfRY8GVGvFvFad1ZTMrwrhQLQa7v1KsjOLFKd'
