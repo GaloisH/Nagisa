@@ -1,0 +1,30 @@
+server:
+  port: 8600
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.wyx.neuroguiagent.controller
+# knife4j
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# AI Model API configuration — real keys go in application-local.yml
+app:
+  ai:
+    deepseek:
+      api-key: ''
+      base-url: 'https://api.deepseek.com'
+      model: 'deepseek-v4-flash'
+    gemini:
+      api-key: ''
+      base-url: 'https://jeniya.top/'
+      model: 'gemini-3-flash-preview'
