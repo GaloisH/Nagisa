@@ -3,6 +3,6 @@
 app:
   ai:
     deepseek:
-      api-key: 'sk-101be397b9b54d118e1dce4258adc3a5'
+      api-key: 'sk-1a80536a9b5e4eafb96b3cdd4cd88983'
     gemini:
       api-key: 'sk-i8XDLVRUGe0GfRY8GVGvFvFad1ZTMrwrhQLQa7v1KsjOLFKd'

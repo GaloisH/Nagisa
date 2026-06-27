@@ -1,6 +1,7 @@
 import base64
 import os
 import threading
+import uuid
 import dashscope
 from dashscope.audio.qwen_tts_realtime import *
 import json
@@ -10,6 +11,16 @@ import time
 import base64
 import pyaudio
 from dashscope.audio.qwen_tts_realtime import *
+import logging
+
+# 简单配置日志（可根据需要调整级别、格式）
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
 
 # =========================================
 # 全局状态
@@ -52,7 +63,13 @@ def try_commit_next(qwen_tts=None):
     # print(f'[TTS] commit sentence: {sentence}')
     tts_busy = True
     qwen_tts.append_text(sentence)
-    qwen_tts.commit()
+    
+    event_id = "event_" + uuid.uuid4().hex
+    logger.info(f'手动提交了commit，eventId: {event_id}')
+    qwen_tts.send_raw(json.dumps({
+      "event_id": event_id,
+      "type": "input_text_buffer.commit",
+    }))
 
 
 # =========================================
@@ -66,6 +83,8 @@ class MyCallback(QwenTtsRealtimeCallback):
             format= pyaudio.paInt16, channels=1, rate=24000, output=True
         )
         self.tts = None
+        self.ifCanWrite = True
+        self.pcm_buffer = None
 
     def on_open(self):
         print('[TTS] websocket connected')
@@ -80,16 +99,39 @@ class MyCallback(QwenTtsRealtimeCallback):
         if event_type == 'response.audio.delta':
             audio_b64 = response['delta']
             pcm_bytes = base64.b64decode(audio_b64)
-            self._stream.write(pcm_bytes)
-            # print(f'[Audio] recv {len(pcm_bytes)} bytes')
+            self.pcm_buffer.put(pcm_bytes)
+
+            
+            # print(f'[Audio] recv {len(pcm_bytes)} bytes')if self.ifCanWrite:self._stream.write(pcm_bytes)
         
         # 某个commit的chunk流结束
         elif event_type == 'response.done':
             # print('[TTS] response done')
             # 当前response结束
             tts_busy = False
+            logger.info('尝试提交下一句')
             # 自动触发下一句
             try_commit_next(self.tts)
+
+    def print_itemId_eventId(self, response, event_type):
+        
+        if event_type == 'input_text_buffer.committed':
+            logger.info('服务端 committed 事件触发')
+            logger.info(f'item_id: {response["item_id"]}, event_id: {response["event_id"]}')
+        
+        elif event_type == 'response.audio.delta':
+            logger.info('audio.delta 事件触发')
+            logger.info(f"response Id {response['response_id']}, item_id: {response['item_id']}, event_id: {response['event_id']}")
+        
+        elif event_type == 'response.done':
+            logger.info('response.done 事件触发')
+            # output 是列表，取第一个元素的 id（若存在）
+            output_list = response['response']['output']
+            if output_list and isinstance(output_list, list):
+                output_id = output_list[0].get('id', 'N/A')
+            else:
+                output_id = 'None'
+            logger.info(f"response Id {response['response']['id']}, output item_id: {output_id}, event_id: {response['event_id']}")
 
 
 class StreamingTTS():
@@ -103,6 +145,8 @@ class StreamingTTS():
             url=url
         )
         self.callback.tts = self.tts
+        self.pcm_buffer = queue.Queue()
+        self.callback.pcm_buffer = self.pcm_buffer
 
     # 读取本地文件的voice_id，与云端建立websockt连接，并上传音色参数voice_id
     def start(self, voice_name=VOICE_NAME):
@@ -116,6 +160,26 @@ class StreamingTTS():
             mode='commit',
             speech_rate=1
         )
+        # 3. 启动发送线程
+        self.writer = threading.Thread(target=self.write_loop, daemon=True)
+        self.writer.start()
+
+
+    def write_loop(self):
+        while True:
+            try:
+                if self.callback.ifCanWrite:
+                    pcm_bytes = self.pcm_buffer.get(timeout=0.5)
+                    self.callback._stream.write(pcm_bytes)
+                else:
+                    time.sleep(0.2)
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"[WriteLoop error] {e}")
+                break
+
+    
         
     # tts 是否要加global
     def process_llm_chunk(self, chunk):

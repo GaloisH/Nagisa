@@ -83,6 +83,12 @@ class KeyboardController:
             print("\n[键盘线程] 收到退出指令")
             self._stop_event.set()
             return False
+        elif key == keyboard.Key.delete:
+            print("\n[键盘线程] 停止扬声器流写入")
+            self._tts.callback.ifCanWrite = False
+        elif key == keyboard.Key.alt_l:
+            print("\n[键盘线程] 恢复扬声器流写入")
+            self._tts.callback.ifCanWrite = True
 
     # 设置暂停标识后，调用stt.pause停止音频采集，之后等待语音队列中的数据被全部发送至云端，然后commit
     def _on_release(self, key):
@@ -214,6 +220,23 @@ class AssistantWindow(QWidget):
             input_layout
         )
 
+        # ---------- 新增：语音的暂停/恢复按钮和清空按钮 ----------
+        control_layout = QHBoxLayout()
+
+        # 暂停/播放按钮（初始为 "⏸️"，表示当前可播放）
+        self.pause_btn = QPushButton("⏸️")
+        self.pause_btn.clicked.connect(self.toggle_pause)
+        control_layout.addWidget(self.pause_btn)
+
+        # 语音清空按钮（仅样式，不绑定回调）
+        self.clear_btn = QPushButton("🗑️ 清空语音")
+        self.clear_btn.clicked.connect(self.toggle_clear)
+        control_layout.addWidget(self.clear_btn)
+
+        main_layout.addLayout(control_layout)
+
+
+
         # ---------- 初始化 WebSocket ----------
 
         self.client = WebSocketClient(
@@ -237,6 +260,23 @@ class AssistantWindow(QWidget):
         # ---------- 初始化键盘监听 ----------
         keyboard_ctrl = KeyboardController(self.stt, stop_event)
         keyboard_ctrl.start()
+
+
+    def toggle_clear(self):
+        return
+
+
+
+    def toggle_pause(self):
+        """切换 TTS 播放暂停/恢复，并更新按钮图标"""
+        if self.client.tts.callback.ifCanWrite:
+            # 当前允许写入 → 暂停播放
+            self.client.tts.callback.ifCanWrite = False
+            self.pause_btn.setText("▶️")   # 变为“播放”图标
+        else:
+            # 当前暂停 → 恢复播放
+            self.client.tts.callback.ifCanWrite = True
+            self.pause_btn.setText("⏸️")   # 变为“暂停”图标
 
     # --------------------
     # websocket回调
