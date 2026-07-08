@@ -2,6 +2,15 @@ import sys
 import threading
 import time
 import queue
+import logging
+
+# 简单配置日志（可根据需要调整级别、格式）
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 from PyQt6.QtWidgets import (
     QApplication,
@@ -41,6 +50,15 @@ IMAGE_PATH = os.path.join(
 )
 
 stop_event  = threading.Event()
+
+
+def clear_queue_safely(q):
+        while not q.empty():
+            try:
+                # 使用非阻塞 get，避免在队列为空时永久阻塞
+                q.get_nowait()
+            except queue.Empty:
+                break
 
 # --------------------
 # GUI线程安全信号
@@ -262,8 +280,50 @@ class AssistantWindow(QWidget):
         keyboard_ctrl.start()
 
 
+    # 清空缓冲区语音以及本轮对话还未播放的语音
     def toggle_clear(self):
+        # 1. 首先禁止扬声器播放
+        self.client.tts.callback.ifCanWrite = False
+
+        # 2.本轮对话还未返回的文本取消语音转化，下次发消息时恢复
+        self.client.should_tts = False  
+        logger.info("self.client.should_tts set to False")
+
+        # 2.5 currentSentence清空，为确保清空，下轮对话发送时再次清空
+        with self.client.tts.currentSentenceCondition:
+            self.client.tts.currentSentence = ""
+            logger.info("currentSentence cleared")
+ 
+        with self.client.tts.callback.condition:
+            # 3. 清空语音缓冲区
+            clear_queue_safely(self.client.tts.sentence_queue)
+
+            # 4. 清空语音缓冲区后，有至多一条 commit 的消息尚未响应，等待其第一个delta事件响应
+        
+            # 4.1 首先判断第一个delta事件是否已经触发，如果触发了，说明当前commit的语音已经开始生成了，直接将其标记为abandonedItemId
+            if self.client.tts.callback.isAck:
+                self.client.tts.callback.abandonedItemId = self.client.tts.callback.currentItemId
+                logger.info(f'清空语音后，标记abandonedItemId: {self.client.tts.callback.abandonedItemId}')
+            else:
+                # 4.2 如果第一个delta事件还未触发，说明当前commit的语音还未生成，等待其第一个delta事件触发后再标记abandonedItemId
+                logger.info('清空语音后，等待首个delta事件触发以标记abandonedItemId')
+                # 防止虚假唤醒
+                while not self.client.tts.callback.isAck:
+                    self.client.tts.callback.condition.wait()  # 阻塞等待首个delta事件触发(释放锁)
+                logger.info(f'首个delta事件触发后，标记abandonedItemId: {self.client.tts.callback.currentItemId}')
+                self.client.tts.callback.abandonedItemId = self.client.tts.callback.currentItemId
+
+        # 5.清空云端返回语音缓冲区
+        clear_queue_safely(self.client.tts.pcm_buffer)
+
+        # 6. 清空语音后，恢复扬声器播放
+        self.client.tts.callback.ifCanWrite = True
+        logger.info("语音清空成功")
         return
+    
+    
+
+    
 
 
 
@@ -369,6 +429,10 @@ class AssistantWindow(QWidget):
             return
 
         self.input_line.clear()
+
+        self.client.should_tts = True  # 发送消息时恢复 TTS
+        print("self.client.should_tts set to True")
+        self.client.tts.currentSentence = ""
 
         self.client.send_message(
             text

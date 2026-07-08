@@ -25,9 +25,7 @@ logger = logging.getLogger(__name__)
 # =========================================
 # 全局状态
 # =========================================
-sentence_queue = queue.Queue()
 DEFAULT_TARGET_MODEL = "qwen3-tts-vc-realtime-2026-01-15" 
-current_sentence = ""
 tts_busy = False
 BASE_DIR= os.path.dirname(os.path.abspath(__file__))
 VOICE_NAME = "Arknights_shu"
@@ -49,27 +47,29 @@ def init_dashscope_api_key():
 
 
 # 提交下一句（核心）
-def try_commit_next(qwen_tts=None):
+def try_commit_next(qwen_tts=None,sentence_queue=None,callbackObject=None):
     global tts_busy
     # 当前TTS还在生成
     if tts_busy:
         return
+    with callbackObject.condition:
+        # 没有待播句子
+        if sentence_queue.empty():
+            return
+        
+        sentence = sentence_queue.get()
+        # print(f'[TTS] commit sentence: {sentence}')
+        tts_busy = True
+        qwen_tts.append_text(sentence)
+        
+        event_id = "event_" + uuid.uuid4().hex
+        logger.info(f'手动提交了commit，eventId: {event_id}')
     
-    # 没有待播句子
-    if sentence_queue.empty():
-        return
-    
-    sentence = sentence_queue.get()
-    # print(f'[TTS] commit sentence: {sentence}')
-    tts_busy = True
-    qwen_tts.append_text(sentence)
-    
-    event_id = "event_" + uuid.uuid4().hex
-    logger.info(f'手动提交了commit，eventId: {event_id}')
-    qwen_tts.send_raw(json.dumps({
-      "event_id": event_id,
-      "type": "input_text_buffer.commit",
-    }))
+        callbackObject.isAck = False  # 重置标记，等待服务端的第一个delta事件
+        qwen_tts.send_raw(json.dumps({
+            "event_id": event_id,
+            "type": "input_text_buffer.commit",
+        }))
 
 
 # =========================================
@@ -77,7 +77,7 @@ def try_commit_next(qwen_tts=None):
 # =========================================
 
 class MyCallback(QwenTtsRealtimeCallback):
-    def __init__(self):
+    def __init__(self, sentence_queue=None):
         self._player = pyaudio.PyAudio()
         self._stream = self._player.open(
             format= pyaudio.paInt16, channels=1, rate=24000, output=True
@@ -85,6 +85,12 @@ class MyCallback(QwenTtsRealtimeCallback):
         self.tts = None
         self.ifCanWrite = True
         self.pcm_buffer = None
+        self.sentence_queue = sentence_queue
+        self.condition = threading.Condition()  # 保证串行
+        self.isAck = False  # 用于标记是否收到服务端的第一个delta事件
+        self.abandonedItemId = None  # 用于记录语音清空后，被放弃的itemId
+        self.currentItemId = None  # 用于记录已提交commit 的 对应回复的 itemId
+        
 
     def on_open(self):
         print('[TTS] websocket connected')
@@ -99,7 +105,22 @@ class MyCallback(QwenTtsRealtimeCallback):
         if event_type == 'response.audio.delta':
             audio_b64 = response['delta']
             pcm_bytes = base64.b64decode(audio_b64)
-            self.pcm_buffer.put(pcm_bytes)
+            with self.condition:
+                # 1.如果当前是第一个 delta 事件，则设置 currentItemId
+                if self.isAck == False:
+                    self.isAck = True
+                    self.currentItemId = response["item_id"]
+                    logger.info(f'首个delta事件触发，itemId: {response["item_id"]}')
+                    self.pcm_buffer.put(pcm_bytes)
+                    self.condition.notify_all()  # 唤醒等待的线程
+                else:
+                    # 2.如果当前不是第一个delta事件，需判断 abandonedItemId 是否设置并匹配
+                    # 如果匹配则不放入队列
+                    if self.abandonedItemId and response["item_id"] == self.abandonedItemId:
+                        logger.info(f'丢弃被放弃的itemId的delta事件，itemId: {response["item_id"]}')
+                    else:
+                        # 3.当前不是第一个delta事件，但itemId正常，则放入队列
+                        self.pcm_buffer.put(pcm_bytes)
 
             
             # print(f'[Audio] recv {len(pcm_bytes)} bytes')if self.ifCanWrite:self._stream.write(pcm_bytes)
@@ -108,10 +129,18 @@ class MyCallback(QwenTtsRealtimeCallback):
         elif event_type == 'response.done':
             # print('[TTS] response done')
             # 当前response结束
+
+            # 避免没有delta事件，做一个兜底
+            with self.condition:
+                if self.isAck == False:
+                    self.isAck = True
+                    logger.info(f'没有delta事件，直接触发done事件，response: {response}')
+                    self.condition.notify_all()  # 唤醒等待的线程
+
             tts_busy = False
             logger.info('尝试提交下一句')
             # 自动触发下一句
-            try_commit_next(self.tts)
+            try_commit_next(self.tts, self.sentence_queue, self)
 
     def print_itemId_eventId(self, response, event_type):
         
@@ -138,7 +167,8 @@ class StreamingTTS():
     # 初始化环境
     def __init__(self,model=DEFAULT_TARGET_MODEL, url='wss://dashscope.aliyuncs.com/api-ws/v1/realtime'):
         init_dashscope_api_key()
-        self.callback = MyCallback()
+        self.sentence_queue = queue.Queue()
+        self.callback = MyCallback(sentence_queue=self.sentence_queue)
         self.tts = QwenTtsRealtime(
             model=model,
             callback=self.callback,
@@ -147,6 +177,8 @@ class StreamingTTS():
         self.callback.tts = self.tts
         self.pcm_buffer = queue.Queue()
         self.callback.pcm_buffer = self.pcm_buffer
+        self.currentSentence = ""  # 用于缓存当前正在生成的句子
+        self.currentSentenceCondition = threading.Condition()  # 用于保护 currentSentence 的访问
 
     # 读取本地文件的voice_id，与云端建立websockt连接，并上传音色参数voice_id
     def start(self, voice_name=VOICE_NAME):
@@ -183,16 +215,17 @@ class StreamingTTS():
         
     # tts 是否要加global
     def process_llm_chunk(self, chunk):
-        global current_sentence
-        current_sentence += chunk
+        with self.currentSentenceCondition:
+            self.currentSentence += chunk
         # 断句
-        if is_sentence_end(current_sentence):
-            sentence = current_sentence.strip()
-            current_sentence = ""
-            sentence_queue.put(sentence)
+        if is_sentence_end(self.currentSentence):
+            with self.currentSentenceCondition:
+                sentence = self.currentSentence.strip()
+                self.currentSentence = ""
+            self.sentence_queue.put(sentence)
             # print(f'[Queue] add sentence: {sentence}')
             # 尝试提交
-            try_commit_next(self.tts)
+            try_commit_next(self.tts, self.sentence_queue, self.callback)
 
     def finish(self):
         self.tts.finish()

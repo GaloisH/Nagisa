@@ -20,6 +20,7 @@ class WebSocketClient:
         self.ws = None
         self.is_connected = False
         self.running = True
+        self.should_tts = True  # 是否允许 TTS
         
         # 屏幕捕获初始化
         tmp_sct = mss()
@@ -63,7 +64,8 @@ class WebSocketClient:
                     if self.text_callback:
                         self.text_callback(content)
 
-                    self.tts.process_llm_chunk(content)
+                    if self.should_tts:
+                        self.tts.process_llm_chunk(content)
 
                 if end:
                     print("\n")
