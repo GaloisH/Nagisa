@@ -31,7 +31,7 @@ class WebSocketClient:
         print(f"[INFO] 屏幕分辨率: {self.screen_width}x{self.screen_height}")
 
         # PyAutoGUI 配置
-        pyautogui.PAUSE = 0.5
+        pyautogui.PAUSE = 0.1
         pyautogui.FAILSAFE = True
         self.scale = 1 # 普通屏幕为1，高分屏按需调整
         self.tts = StreamingTTS()
@@ -83,11 +83,44 @@ class WebSocketClient:
 
             # 3. 执行 Actions
             if call_id and actions:
-                for action in actions:
-                    self.execute_action(action, call_id)
+                self.execute_actions(actions, call_id)
 
         except Exception as e:
             print(f"\033[91m解析消息失败: {e}\033[0m")
+
+    def execute_actions(self, actions, call_id):
+        """Execute an action batch and send exactly one result for the call_id."""
+        if len(actions) == 1 and actions[0].get("command", "").upper() == "SCREENSHOT":
+            self.handle_screenshot(call_id)
+            return
+
+        wait = 1.5 if len(actions) == 1 else 0.5
+        results = []
+        for index, action in enumerate(actions):
+            command = action.get("command")
+            params = action.get("params", {})
+            print(f"\033[94m[ACTION] Executing: {command} params: {params}\033[0m")
+            try:
+                if not command:
+                    raise Exception("Missing command")
+                if command.upper() == "SCREENSHOT":
+                    raise Exception("SCREENSHOT must be executed as a single screenshot request")
+
+                real_params = self.denormalize_coordinates(params)
+                if not hasattr(self, command):
+                    raise Exception(f"Undefined command: {command}")
+
+                func = getattr(self, command)
+                result_msg = func(**real_params, wait=wait)
+                results.append(f"{index}:{command}:{result_msg}")
+            except Exception as e:
+                error_msg = f"Action batch failed at index {index}, command {command}: {e}"
+                print(f"\033[91m{error_msg}\033[0m")
+                self.send_base_request("action result", error_msg, 504, call_id)
+                return
+        if len(actions) > 1:
+            time.sleep(1)  # Ensure all actions have completed before sending the result
+        self.send_base_request("action result", " | ".join(results), 200, call_id)
 
     def execute_action(self, action, call_id):
         """执行单个指令并回传结果"""
@@ -215,9 +248,10 @@ class WebSocketClient:
         time.sleep(wait)
         return f"Scrolled {clicks}"
 
-    def drag_mouse(self, start_x, start_y, end_x, end_y, duration=1.0):
+    def drag_mouse(self, start_x, start_y, end_x, end_y, duration=1.0, wait=1.5):
         pyautogui.moveTo(start_x, start_y)
         pyautogui.dragTo(end_x, end_y, duration=duration)
+        time.sleep(wait)
         return f"Dragged from {start_x},{start_y} to {end_x},{end_y}"
 
     def press_key(self, key, wait=1.5):
