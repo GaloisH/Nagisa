@@ -11,12 +11,14 @@ from PIL import Image
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage, AIMessage
-from langchain_core.tools import tool
 
-from tools import tools_list
+from .tools import tools_list
+import time
+
+# print(tools_list)
 
 # ================= 配置区域 =================
-api_key = ""
+api_key = "sk-i8XDLVRUGe0GfRY8GVGvFvFad1ZTMrwrhQLQa7v1KsjOLFKd"
 base_url = "https://jeniya.top/v1"
 
 system_prompt = """
@@ -73,9 +75,9 @@ def img2base64(image, max_size=1024):
 
 
 class ReActGUIAgent:
-    def __init__(self, api_key, base_url, system_prompt):
+    def __init__(self, api_key=api_key, base_url=base_url, system_prompt=system_prompt):
         self.llm = ChatOpenAI(
-            model="gemini-3-flash-preview",
+            model="gemini-3.5-flash",
             openai_api_key=api_key,
             base_url=base_url,
             temperature=0.1,
@@ -86,14 +88,14 @@ class ReActGUIAgent:
         self.sct = mss.mss()
 
         # 获取屏幕实际分辨率用于坐标转换
-        monitor = self.sct.monitors[1]
-        self.screen_width = monitor["width"]
-        self.screen_height = monitor["height"]
+        self.monitor = self.sct.monitors[2]
+        self.screen_width = self.monitor["width"]
+        self.screen_height = self.monitor["height"]
         print(f"[INFO] Screen resolution: {self.screen_width}x{self.screen_height}")
 
     def capture_screen(self):
         """截取当前屏幕"""
-        screenshot = self.sct.grab(self.sct.monitors[1])
+        screenshot = self.sct.grab(self.monitor)
         img = np.array(screenshot)
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
         return img
@@ -215,7 +217,7 @@ class ReActGUIAgent:
                 )
 
             # 循环继续，下一轮会截取新图
-
+            time.sleep(1.5)
         print("[WARN] Max steps reached.")
         return "Task stopped due to max steps limit."
 

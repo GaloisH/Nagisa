@@ -1,0 +1,51 @@
+2026-06-05 15:32:47 | ERROR    | VoiceAgent:<module>:36 - 这是一个错误日志
+2026-06-05 15:32:47 | CRITICAL | VoiceAgent:<module>:37 - 这是一个严重错误日志
+2026-06-07 23:42:20 | ERROR    | gui.live2d.live2d_widget:_dispatch:53 | 模型错误: this._motionMgr.setMotionPriority is not a function
+2026-06-07 23:42:20 | ERROR    | gui.live2d.live2d_widget:_on_model_error:132 | 模型加载错误: this._motionMgr.setMotionPriority is not a function
+2026-06-07 23:43:38 | ERROR    | gui.live2d.live2d_widget:_dispatch:53 | 模型错误: this._motionMgr.setMotionPriority is not a function
+2026-06-07 23:43:38 | ERROR    | gui.live2d.live2d_widget:_on_model_error:132 | 模型加载错误: this._motionMgr.setMotionPriority is not a function
+2026-06-10 00:31:38 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:10:42 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:12:09 | ERROR    | websocket:error:77 | error from callback <bound method OmniRealtimeConversation.on_error of <dashscope.audio.qwen_omni.omni_realtime.OmniRealtimeConversation object at 0x000002014B104C20>>: websocket closed due to [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+2026-07-12 13:12:09 | ERROR    | websocket:error:77 | [WinError 10054] 远程主机强迫关闭了一个现有的连接。 - goodbye
+2026-07-12 13:12:10 | ERROR    | websocket:error:77 | error from callback <bound method QwenTtsRealtime.on_error of <dashscope.audio.qwen_tts_realtime.qwen_tts_realtime.QwenTtsRealtime object at 0x000002014B105FD0>>: websocket closed due to [WinError 10054] 远程主机强迫关闭了一个现有的连接。
+2026-07-12 13:12:10 | ERROR    | websocket:error:77 | [WinError 10054] 远程主机强迫关闭了一个现有的连接。 - goodbye
+2026-07-12 13:31:12 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:31:13 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:31:14 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:31:14 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:31:14 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:31:15 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-12 13:31:20 | ERROR    | agent:_run:195 | 出错: Connection is already closed.
+2026-07-12 13:31:20 | ERROR    | gui.window:_on_error:142 | Agent 回调错误: Connection is already closed.
+2026-07-12 13:31:34 | ERROR    | agent:_run:195 | 出错: Connection is already closed.
+2026-07-12 13:31:34 | ERROR    | gui.window:_on_error:142 | Agent 回调错误: Connection is already closed.
+2026-07-12 13:31:55 | ERROR    | agent:_run:195 | 出错: Connection is already closed.
+2026-07-12 13:31:55 | ERROR    | gui.window:_on_error:142 | Agent 回调错误: Connection is already closed.
+2026-07-12 14:13:57 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-13 21:56:25 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-13 21:58:55 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-13 22:01:23 | ERROR    | websocket:error:77 | error from callback <bound method OmniRealtimeConversation.on_error of <dashscope.audio.qwen_omni.omni_realtime.OmniRealtimeConversation object at 0x000002C0DB114D70>>: websocket closed due to fin=1 opcode=8 data=b'\x03\xefIdle timeout!'
+2026-07-13 22:01:23 | ERROR    | websocket:error:77 | fin=1 opcode=8 data=b'\x03\xefIdle timeout!' - goodbye
+2026-07-13 22:01:33 | ERROR    | websocket:error:77 | error from callback <bound method QwenTtsRealtime.on_error of <dashscope.audio.qwen_tts_realtime.qwen_tts_realtime.QwenTtsRealtime object at 0x000002C0DB116120>>: websocket closed due to fin=1 opcode=8 data=b'\x03\xe8Bye'
+2026-07-13 22:01:33 | ERROR    | websocket:error:77 | fin=1 opcode=8 data=b'\x03\xe8Bye' - goodbye
+2026-07-13 22:04:13 | ERROR    | websocket:error:77 | error from callback <bound method QwenTtsRealtime.on_error of <dashscope.audio.qwen_tts_realtime.qwen_tts_realtime.QwenTtsRealtime object at 0x000002C0DB1125D0>>: websocket closed due to fin=1 opcode=8 data=b'\x03\xe8Bye'
+2026-07-13 22:04:13 | ERROR    | websocket:error:77 | fin=1 opcode=8 data=b'\x03\xe8Bye' - goodbye
+2026-07-13 22:04:14 | ERROR    | websocket:error:77 | error from callback <bound method QwenTtsRealtime.on_error of <dashscope.audio.qwen_tts_realtime.qwen_tts_realtime.QwenTtsRealtime object at 0x000002C0DB1B9310>>: websocket closed due to fin=1 opcode=8 data=b'\x03\xefIdle timeout!'
+2026-07-13 22:04:14 | ERROR    | websocket:error:77 | fin=1 opcode=8 data=b'\x03\xefIdle timeout!' - goodbye
+2026-07-14 00:14:10 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-14 00:14:54 | ERROR    | agent:_run:195 | 出错: unsupported operand type(s) for /: 'list' and 'int'
+2026-07-14 00:14:54 | ERROR    | gui.window:_on_error:142 | Agent 回调错误: unsupported operand type(s) for /: 'list' and 'int'
+2026-07-14 00:18:47 | ERROR    | agent:_run:195 | 出错: unsupported operand type(s) for /: 'list' and 'int'
+2026-07-14 00:18:47 | ERROR    | gui.window:_on_error:142 | Agent 回调错误: unsupported operand type(s) for /: 'list' and 'int'
+2026-07-14 00:19:06 | ERROR    | websocket:error:77 | error from callback <bound method OmniRealtimeConversation.on_error of <dashscope.audio.qwen_omni.omni_realtime.OmniRealtimeConversation object at 0x0000019210A60AD0>>: websocket closed due to fin=1 opcode=8 data=b'\x03\xefIdle timeout!'
+2026-07-14 00:19:06 | ERROR    | websocket:error:77 | fin=1 opcode=8 data=b'\x03\xefIdle timeout!' - goodbye
+2026-07-14 00:19:17 | ERROR    | websocket:error:77 | error from callback <bound method QwenTtsRealtime.on_error of <dashscope.audio.qwen_tts_realtime.qwen_tts_realtime.QwenTtsRealtime object at 0x0000019210A61E80>>: websocket closed due to fin=1 opcode=8 data=b'\x03\xe8Bye'
+2026-07-14 00:19:17 | ERROR    | websocket:error:77 | fin=1 opcode=8 data=b'\x03\xe8Bye' - goodbye
+2026-07-14 00:19:24 | ERROR    | websocket:error:77 | error from callback <bound method QwenTtsRealtime.on_error of <dashscope.audio.qwen_tts_realtime.qwen_tts_realtime.QwenTtsRealtime object at 0x0000019210A5E710>>: websocket closed due to fin=1 opcode=8 data=b'\x03\xe8Bye'
+2026-07-14 00:19:24 | ERROR    | websocket:error:77 | fin=1 opcode=8 data=b'\x03\xe8Bye' - goodbye
+2026-07-14 00:22:18 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-14 00:22:50 | ERROR    | agent:_run:195 | 出错: unsupported operand type(s) for /: 'list' and 'int'
+2026-07-14 00:22:50 | ERROR    | gui.window:_on_error:142 | Agent 回调错误: unsupported operand type(s) for /: 'list' and 'int'
+2026-07-14 00:24:43 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/
+2026-07-14 00:29:12 | ERROR    | gui.live2d.live2d_widget:_on_load_finished:42 | Live2D 页面加载失败: http://localhost:5000/

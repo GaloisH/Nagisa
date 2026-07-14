@@ -22,10 +22,10 @@ def _get_scaled_pos(x, y):
 def click_position(x: int, y: int, wait: float = 0.5):
     """
     点击屏幕上的指定位置 (x, y)。
-    坐标必须是归一化后的坐标(0-1000)，不需要转换，外部调用者负责传入0-1000。
-    
-    *修改*: 为了配合Agent的逻辑，这里假设传入的是实际像素坐标。
-    Agent层负责将 0-1000 映射回 实际分辨率。
+    Args:
+        x: 水平坐标
+        y: 垂直坐标
+        wait: 点击后等待的时间（秒）
     """
     try:
         real_x, real_y = _get_scaled_pos(x, y)
@@ -38,7 +38,13 @@ def click_position(x: int, y: int, wait: float = 0.5):
 
 @tool
 def double_click_position(x: int, y: int, wait: float = 0.5):
-    """双击屏幕上的指定位置 (x, y)。"""
+    """
+    双击屏幕上的指定位置 (x, y)。
+    Args:
+        x: 水平坐标
+        y: 垂直坐标
+        wait: 双击后等待的时间（秒）
+    """
     try:
         real_x, real_y = _get_scaled_pos(x, y)
         pyautogui.moveTo(real_x, real_y, duration=0.3, tween=pyautogui.easeOutQuad)
